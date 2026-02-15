@@ -134,7 +134,7 @@ main { max-width:1700px; margin:0 auto; padding:26px 18px; }
   </div>
   <div class="hdr-right">
     <button class="sim-btn" onclick="runSimulation()">🔄 RE-SIMULATE</button>
-    <div class="var-row">UPSET FACTOR <input type="range" id="vSlider" min="0" max="100" value="30"> <span id="vVal">30%</span></div>
+    <div class="var-row">UPSET FACTOR <input type="range" id="vSlider" min="0" max="100" value="20"> <span id="vVal">20%</span></div>
   </div>
 </header>
 
@@ -268,7 +268,7 @@ const GROUP_SCHEDULE = {
 };
 
 let SIM = {};
-let variance = 30;
+let variance = 20;
 
 document.getElementById('vSlider').addEventListener('input', function(){ variance=+this.value; document.getElementById('vVal').textContent=variance+'%'; });
 
@@ -285,64 +285,114 @@ function irand(lo, hi) { return Math.floor(lo + srng() * (hi - lo + 1)); }
 
 // ── Poisson goals via lookup table (fast, no loop risk) ──────
 function poissonGoals(lambda) {
-  // Knuth algorithm — guaranteed to terminate in bounded iterations for lambda < 20
-  lambda = Math.max(0.1, Math.min(lambda, 8)); // clamp to safe range
+  lambda = Math.max(0.1, Math.min(lambda, 8));
   const L = Math.exp(-lambda);
   let k = 0, p = 1;
   do { k++; p *= srng(); } while (p > L && k < 15);
   return k - 1;
 }
 
+// ── Monte Carlo simulation runs based on upset factor ────────
+// 0% upset = 1000 runs (most accurate, picks most likely outcome)
+// 100% upset = 1 run (least accurate, pure randomness)
+// Linear distribution: runs = 1000 - (variance * 9.99)
+function getMonteCarloRuns() {
+  // Inverse relationship: lower upset = more simulations
+  // Formula: 1000 runs at 0%, scales down to 1 run at 100%
+  return Math.max(1, Math.round(1000 - (variance * 9.99)));
+}
+
 // ── Expected goals model with FIFA ranking + club strength ────
 function calcXG(attacker, defender) {
   const ta = T[attacker], td = T[defender];
   
-  // Base expected goals
   const base = 1.15;
-  
-  // Attack vs Defence tactical edge
   const tacticalEdge = (ta.att - td.def) / 40;
-  
-  // FIFA ranking bonus (lower rank = better)
-  // Top 10 teams get boost, bottom 50 teams get penalty
-  const fifaBonus = (50 - ta.fifa) / 200;  // ranges from ~0.24 (rank 1) to -0.16 (rank 100)
+  const fifaBonus = (50 - ta.fifa) / 200;
   const fifaPenalty = (td.fifa - 50) / 200;
-  
-  // Club strength factor — teams with players in top leagues perform better
   const clubEdge = (ta.clubStr - td.clubStr) / 50;
+  const formFactor = (ta.r - 75) / 100;
   
-  // Form factor — simulate recent form based on overall rating
-  const formFactor = (ta.r - 75) / 100;  // better teams are more consistent
-  
-  // Combined strength calculation
   let xg = base + tacticalEdge + fifaBonus + fifaPenalty + clubEdge + formFactor;
   
   // Add variance based on slider
   const noise = (srng() - 0.5) * (variance / 100) * 1.6;
   xg += noise;
   
-  // Clamp to realistic range
   return Math.max(0.15, Math.min(xg, 4.2));
 }
 
+// ── Monte Carlo Group Match Simulation ────────────────────────
 function simGroupMatch(a, b) {
-  return { goalsA: poissonGoals(calcXG(a, b)), goalsB: poissonGoals(calcXG(b, a)) };
+  const runs = getMonteCarloRuns();
+  const results = {};
+  
+  // Run multiple simulations
+  for (let i = 0; i < runs; i++) {
+    const goalsA = poissonGoals(calcXG(a, b));
+    const goalsB = poissonGoals(calcXG(b, a));
+    const key = `${goalsA}-${goalsB}`;
+    results[key] = (results[key] || 0) + 1;
+  }
+  
+  // Pick most common result (highest probability)
+  let maxCount = 0;
+  let bestResult = null;
+  for (const [scoreKey, count] of Object.entries(results)) {
+    if (count > maxCount) {
+      maxCount = count;
+      bestResult = scoreKey;
+    }
+  }
+  
+  const [goalsA, goalsB] = bestResult.split('-').map(Number);
+  return { goalsA, goalsB };
 }
 
+// ── Monte Carlo Knockout Match Simulation ─────────────────────
 function simKO(a, b) {
-  let { goalsA, goalsB } = simGroupMatch(a, b);
+  const runs = getMonteCarloRuns();
+  const outcomes = {};
+  
+  // Run multiple simulations
+  for (let i = 0; i < runs; i++) {
+    const result = simSingleKO(a, b);
+    const key = `${result.goalsA}-${result.goalsB}-${result.aet}-${result.pens?.a || 'n'}-${result.pens?.b || 'n'}`;
+    
+    if (!outcomes[key]) {
+      outcomes[key] = { ...result, count: 0 };
+    }
+    outcomes[key].count++;
+  }
+  
+  // Pick most common outcome
+  let maxCount = 0;
+  let bestOutcome = null;
+  for (const outcome of Object.values(outcomes)) {
+    if (outcome.count > maxCount) {
+      maxCount = outcome.count;
+      bestOutcome = outcome;
+    }
+  }
+  
+  const { goalsA, goalsB, aet, pens, winner } = bestOutcome;
+  return { goalsA, goalsB, aet, pens, winner };
+}
+
+// ── Single knockout simulation (used by Monte Carlo) ──────────
+function simSingleKO(a, b) {
+  let goalsA = poissonGoals(calcXG(a, b));
+  let goalsB = poissonGoals(calcXG(b, a));
   let aet = false, pens = null;
+  
   if (goalsA === goalsB) {
     aet = true;
-    // AET: probability based on FIFA ranking and club strength
     const aetChance = 0.25 + (T[a].r - T[b].r) / 400;
     if (srng() < aetChance) {
-      // Higher FIFA ranking (lower number) = more likely to score
       const aProb = (100 - T[a].fifa) / (200 - T[a].fifa - T[b].fifa);
       srng() < aProb ? goalsA++ : goalsB++;
     }
     if (goalsA === goalsB) {
-      // Penalty shootout — FIFA rank and club strength affect accuracy
       const baseAcc = 0.70;
       const accA = Math.min(0.85, baseAcc + (100 - T[a].fifa) / 300 + T[a].clubStr / 300);
       const accB = Math.min(0.85, baseAcc + (100 - T[b].fifa) / 300 + T[b].clubStr / 300);
