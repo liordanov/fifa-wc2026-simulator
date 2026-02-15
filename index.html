@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FIFA World Cup 2026 — Prediction Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@300;400;600;700&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #C9A84C; --gold-light: #F0D080;
+    --dark: #0a0f0d; --darker: #060908;
+    --white: #f5f0e8; --muted: #7a9080;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--darker); color:var(--white); font-family:'Barlow',sans-serif; min-height:100vh; overflow-x:hidden; }
+
+header {
+background:linear-gradient(135deg,#0a0f0d 0%,#0e2018 60%,#0a0f0d 100%);
+border-bottom:2px solid var(–gold); padding:22px 36px;
+display:flex; align-items:center; gap:18px; position:relative; overflow:hidden;
+}
+header::before { content:’’; position:absolute; inset:0; background:repeating-linear-gradient(60deg,transparent,transparent 30px,rgba(201,168,76,.03) 30px,rgba(201,168,76,.03) 31px); }
+.trophy { font-size:46px; filter:drop-shadow(0 0 18px rgba(201,168,76,.6)); }
+header h1 { font-family:‘Bebas Neue’,sans-serif; font-size:clamp(24px,4vw,48px); letter-spacing:4px; color:var(–gold-light); line-height:1; text-shadow:0 0 40px rgba(201,168,76,.4); }
+header p { font-family:‘Barlow Condensed’,sans-serif; color:var(–muted); font-size:11px; letter-spacing:3px; text-transform:uppercase; margin-top:3px; }
+.hdr-right { margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:8px; z-index:1; }
+.sim-btn { background:var(–gold); color:var(–darker); border:none; padding:10px 26px; font-family:‘Bebas Neue’,sans-serif; font-size:17px; letter-spacing:2px; cursor:pointer; transition:all .2s; }
+.sim-btn:hover { background:var(–gold-light); transform:translateY(-2px); box-shadow:0 8px 28px rgba(201,168,76,.4); }
+.sim-btn:active { transform:translateY(0); }
+.var-row { display:flex; align-items:center; gap:7px; font-family:‘Barlow Condensed’,sans-serif; font-size:11px; color:var(–muted); letter-spacing:1px; }
+.var-row input[type=range] { width:110px; accent-color:var(–gold); cursor:pointer; }
+
+.progress-overlay { position:fixed; inset:0; background:rgba(6,9,8,.97); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; transition:opacity .5s; }
+.progress-overlay.hidden { opacity:0; pointer-events:none; }
+.prog-title { font-family:‘Bebas Neue’,sans-serif; font-size:28px; letter-spacing:6px; color:var(–gold); margin-bottom:18px; }
+.prog-wrap { width:380px; max-width:80vw; height:5px; background:rgba(201,168,76,.1); border:1px solid rgba(201,168,76,.3); }
+.prog-fill { height:100%; background:linear-gradient(90deg,var(–gold),var(–gold-light)); transition:width .25s; width:0%; }
+.prog-sub { margin-top:9px; font-family:‘Barlow Condensed’,sans-serif; font-size:12px; letter-spacing:2px; color:var(–muted); }
+
+main { max-width:1700px; margin:0 auto; padding:26px 18px; }
+.section-label { font-family:‘Bebas Neue’,sans-serif; font-size:13px; letter-spacing:5px; color:var(–gold); text-transform:uppercase; margin-bottom:13px; display:flex; align-items:center; gap:12px; }
+.section-label::after { content:’’; flex:1; height:1px; background:linear-gradient(to right,rgba(201,168,76,.3),transparent); }
+
+/* PODIUM */
+.podium-section { background:linear-gradient(145deg,#0a1f12,#050e09); border:2px solid var(–gold); padding:34px 38px; text-align:center; position:relative; overflow:hidden; margin-bottom:34px; }
+.podium-section::before { content:’’; position:absolute; inset:0; background:radial-gradient(ellipse at center,rgba(201,168,76,.08) 0%,transparent 70%); pointer-events:none; }
+.pod-lbl { font-family:‘Bebas Neue’,sans-serif; font-size:13px; letter-spacing:6px; color:var(–gold); margin-bottom:12px; }
+.champ-flag { font-size:58px; display:block; margin-bottom:9px; }
+.champ-name { font-family:‘Bebas Neue’,sans-serif; font-size:clamp(42px,7vw,86px); color:var(–gold-light); letter-spacing:8px; text-shadow:0 0 60px rgba(201,168,76,.5); line-height:1; }
+.champ-score { font-family:‘Barlow Condensed’,sans-serif; font-size:18px; color:var(–muted); margin-top:7px; letter-spacing:2px; }
+.podium-row { display:flex; justify-content:center; gap:44px; margin-top:26px; flex-wrap:wrap; }
+.pod-item { text-align:center; }
+.pod-flag { font-size:28px; display:block; margin-bottom:3px; }
+.pod-pos { font-family:‘Bebas Neue’,sans-serif; font-size:34px; line-height:1; }
+.pod-pos.gold { color:var(–gold); }
+.pod-pos.silver { color:#c0c0c0; }
+.pod-pos.bronze { color:#cd7f32; }
+.pod-pos.fourth { color:var(–muted); }
+.pod-team { font-family:‘Barlow Condensed’,sans-serif; font-size:15px; font-weight:600; margin-top:3px; }
+
+/* GROUPS */
+.groups-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(245px,1fr)); gap:13px; margin-bottom:34px; }
+.group-card { background:linear-gradient(145deg,#0f1f16,#0a1510); border:1px solid rgba(201,168,76,.2); overflow:hidden; transition:border-color .2s; }
+.group-card:hover { border-color:rgba(201,168,76,.45); }
+.grp-hdr { background:linear-gradient(90deg,rgba(201,168,76,.12),transparent); border-bottom:1px solid rgba(201,168,76,.2); padding:8px 13px; }
+.grp-letter { font-family:‘Bebas Neue’,sans-serif; font-size:24px; color:var(–gold); line-height:1; }
+.grp-tbl { width:100%; border-collapse:collapse; }
+.grp-tbl th { font-family:‘Barlow Condensed’,sans-serif; font-size:10px; letter-spacing:1px; color:var(–muted); text-transform:uppercase; padding:5px 6px; text-align:center; border-bottom:1px solid rgba(255,255,255,.05); }
+.grp-tbl th:first-child { text-align:left; padding-left:13px; }
+.grp-tbl td { padding:6px 6px; text-align:center; font-size:12px; font-family:‘Barlow Condensed’,sans-serif; border-bottom:1px solid rgba(255,255,255,.04); }
+.grp-tbl td:first-child { text-align:left; padding-left:13px; }
+.grp-tbl tr:last-child td { border-bottom:none; }
+.pos-n { font-family:‘Bebas Neue’,sans-serif; font-size:12px; margin-right:4px; }
+.p1{color:var(–gold);} .p2{color:#aaa;} .p3,.p4{color:var(–muted);}
+.qualified { background:rgba(58,181,106,.07); }
+
+/* GROUP MATCHES */
+.group-matches-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:13px; margin-bottom:34px; }
+.group-matches-card { background:linear-gradient(145deg,#0f1f16,#0a1510); border:1px solid rgba(201,168,76,.2); overflow:hidden; }
+.group-matches-card .grp-hdr { background:linear-gradient(90deg,rgba(201,168,76,.12),transparent); border-bottom:1px solid rgba(201,168,76,.2); padding:8px 13px; }
+.group-match { display:flex; align-items:center; justify-content:space-between; padding:7px 13px; border-bottom:1px solid rgba(255,255,255,.04); font-family:‘Barlow Condensed’,sans-serif; font-size:13px; }
+.group-match:last-child { border-bottom:none; }
+.gm-team { flex:1; display:flex; align-items:center; gap:6px; }
+.gm-team.winner { font-weight:600; color:var(–gold-light); }
+.gm-team.loser { color:var(–muted); opacity:.7; }
+.gm-team.draw { color:var(–white); }
+.gm-score { font-family:‘Bebas Neue’,sans-serif; font-size:20px; min-width:35px; text-align:center; color:var(–gold); }
+
+/* KNOCKOUT */
+.rounds-wrap { display:flex; gap:0; overflow-x:auto; padding-bottom:14px; margin-bottom:34px; }
+.round-col { flex:0 0 auto; width:220px; }
+.round-title { font-family:‘Bebas Neue’,sans-serif; font-size:11px; letter-spacing:3px; color:var(–gold); text-align:center; padding:8px 5px; background:rgba(201,168,76,.07); border-bottom:1px solid rgba(201,168,76,.2); border-right:1px solid rgba(201,168,76,.08); margin-bottom:11px; }
+.match-card { background:linear-gradient(145deg,#0f1f16,#0a1510); border:1px solid rgba(201,168,76,.13); margin:0 5px 8px; padding:8px 10px; transition:border-color .2s; }
+.match-card:hover { border-color:rgba(201,168,76,.38); }
+.match-num { font-family:‘Barlow Condensed’,sans-serif; font-size:10px; color:rgba(201,168,76,.5); letter-spacing:2px; margin-bottom:5px; }
+.match-team { display:flex; justify-content:space-between; align-items:center; padding:3px 0; font-family:‘Barlow Condensed’,sans-serif; font-size:13px; font-weight:600; }
+.match-team.winner { color:var(–gold-light); }
+.match-team.loser { color:var(–muted); opacity:.65; }
+.match-score { font-family:‘Bebas Neue’,sans-serif; font-size:18px; min-width:19px; text-align:center; }
+.match-team.winner .match-score { color:var(–gold); }
+.match-divider { height:1px; background:rgba(255,255,255,.06); margin:2px 0; }
+.match-meta { font-size:9px; color:var(–muted); font-family:‘Barlow Condensed’,sans-serif; letter-spacing:1px; margin-top:3px; }
+
+/* STATS */
+.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:13px; margin-bottom:34px; }
+.stat-card { background:linear-gradient(145deg,#0f1f16,#0a1510); border:1px solid rgba(201,168,76,.2); padding:17px; }
+.stat-card h3 { font-family:‘Bebas Neue’,sans-serif; font-size:15px; letter-spacing:3px; color:var(–gold); margin-bottom:13px; border-bottom:1px solid rgba(201,168,76,.2); padding-bottom:6px; }
+.stat-row { display:flex; align-items:center; gap:9px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.04); font-family:‘Barlow Condensed’,sans-serif; font-size:13px; }
+.stat-row:last-child { border-bottom:none; }
+.stat-rank { font-family:‘Bebas Neue’,sans-serif; font-size:14px; color:var(–gold); min-width:17px; }
+.stat-player { flex:1; font-weight:600; }
+.stat-country { color:var(–muted); font-size:11px; }
+.stat-val { font-family:‘Bebas Neue’,sans-serif; font-size:20px; color:var(–gold-light); }
+
+@media(max-width:768px){ header{padding:14px;} .stats-grid{grid-template-columns:1fr;} .round-col{width:170px;} .podium-row{gap:20px;} }
+</style>
+
+</head>
+<body>
+
+<div class="progress-overlay" id="loadingOverlay">
+  <div style="font-size:46px;margin-bottom:12px">⚽</div>
+  <div class="prog-title">SIMULATING WORLD CUP 2026</div>
+  <div class="prog-wrap"><div class="prog-fill" id="progBar"></div></div>
+  <div class="prog-sub" id="progSub">Analysing squads...</div>
+</div>
+
+<header>
+  <div class="trophy">🏆</div>
+  <div>
+    <h1>FIFA World Cup 2026</h1>
+    <p>Statistical Prediction Simulator · 48 Teams · USA · Canada · Mexico</p>
+  </div>
+  <div class="hdr-right">
+    <button class="sim-btn" onclick="runSimulation()">🔄 RE-SIMULATE</button>
+    <div class="var-row">UPSET FACTOR <input type="range" id="vSlider" min="0" max="100" value="30"> <span id="vVal">30%</span></div>
+  </div>
+</header>
+
+<main id="mainContent" style="opacity:0;transition:opacity .5s">
+  <div class="section-label">🏆 Final Result</div>
+  <div class="podium-section" id="podiumSection"></div>
+
+  <div class="section-label">📊 Group Stage Standings & Results</div>
+  <div class="groups-grid" id="groupsGrid"></div>
+
+  <div class="section-label">⚡ Knockout Bracket</div>
+  <div class="rounds-wrap" id="knockoutWrap"></div>
+
+  <div class="section-label">📈 Tournament Statistics</div>
+  <div class="stats-grid" id="statsGrid"></div>
+</main>
+
+<script>
+// ──────────────────────────────────────────────────────────────────────
+// TEAM DATABASE  — Enhanced with FIFA rankings + club strength
+// r = overall rating (60-96)
+// fifa = FIFA world ranking position (lower is better)
+// clubStr = average club strength of squad (top leagues rated higher)
+// att/def/mid = tactical ratings adjusted by FIFA rank + club quality
+// ──────────────────────────────────────────────────────────────────────
+const T = {
+  MEX:{name:"Mexico",        flag:"🇲🇽",r:76,fifa:13,clubStr:72,att:75,def:73,mid:77,stars:["H.Lozano","S.Giménez","E.Álvarez","O.Pineda","J.Sánchez"]},
+  RSA:{name:"South Africa",  flag:"🇿🇦",r:64,fifa:57,clubStr:58,att:62,def:65,mid:63,stars:["P.Tau","S.Mkhize","T.Zwane","K.Dolly","B.Mothiba"]},
+  KOR:{name:"Korea Rep.",    flag:"🇰🇷",r:73,fifa:23,clubStr:70,att:74,def:71,mid:74,stars:["Son Heung-min","Lee Kang-in","Kim Min-jae","Hwang Hee-chan","Jung Woo-young"]},
+  DEN:{name:"Denmark",       flag:"🇩🇰",r:78,fifa:21,clubStr:78,att:77,def:78,mid:79,stars:["C.Eriksen","R.Højlund","J.Andersen","V.Kühn","A.Cornelius"]},
+  CAN:{name:"Canada",        flag:"🇨🇦",r:75,fifa:40,clubStr:74,att:75,def:73,mid:75,stars:["A.Davies","J.David","T.Buchanan","T.Henry","L.Johnston"]},
+  ITA:{name:"Italy",         flag:"🇮🇹",r:81,fifa:9,clubStr:84,att:80,def:82,mid:81,stars:["F.Chiesa","N.Barella","G.Donnarumma","R.Locatelli","G.Raspadori"]},
+  QAT:{name:"Qatar",         flag:"🇶🇦",r:66,fifa:37,clubStr:62,att:64,def:66,mid:65,stars:["A.Afif","M.Al Haydos","H.Al-Haydos","B.Boudiaf","K.Boudiaf"]},
+  SUI:{name:"Switzerland",   flag:"🇨🇭",r:78,fifa:19,clubStr:77,att:77,def:78,mid:79,stars:["G.Xhaka","X.Shaqiri","M.Akanji","R.Vargas","G.Seferovic"]},
+  BRA:{name:"Brazil",        flag:"🇧🇷",r:87,fifa:5,clubStr:88,att:91,def:83,mid:87,stars:["Vinicius Jr","Rodrygo","Endrick","L.Paquetá","Marquinhos"]},
+  MAR:{name:"Morocco",       flag:"🇲🇦",r:79,fifa:14,clubStr:76,att:77,def:82,mid:78,stars:["H.Ziyech","A.Hakimi","S.Amrabat","Y.En-Nesyri","N.Aguerd"]},
+  HAI:{name:"Haiti",         flag:"🇭🇹",r:60,fifa:83,clubStr:52,att:58,def:61,mid:59,stars:["N.Noel","D.Chery","J.Geffrard","K.Dérose","S.Borgella"]},
+  SCO:{name:"Scotland",      flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",r:72,fifa:49,clubStr:71,att:70,def:72,mid:73,stars:["K.McTominay","A.Robertson","C.Adams","B.Gilmour","L.Ferguson"]},
+  USA:{name:"USA",           flag:"🇺🇸",r:79,fifa:16,clubStr:76,att:79,def:77,mid:79,stars:["C.Pulisic","F.Reyna","T.Dest","W.Aaronson","M.McKennie"]},
+  PAR:{name:"Paraguay",      flag:"🇵🇾",r:69,fifa:54,clubStr:65,att:69,def:68,mid:69,stars:["M.Almirón","J.Sanabria","R.Alderete","G.Gómez","A.Cubas"]},
+  AUS:{name:"Australia",     flag:"🇦🇺",r:71,fifa:25,clubStr:68,att:70,def:70,mid:71,stars:["M.Leckie","R.Boyle","H.Souttar","A.Redmayne","B.Irvine"]},
+  TUR:{name:"Turkey",        flag:"🇹🇷",r:74,fifa:36,clubStr:72,att:74,def:73,mid:74,stars:["H.Çalhanoglu","K.Aktürkoğlu","M.Demiral","A.Güler","B.Yıldız"]},
+  GER:{name:"Germany",       flag:"🇩🇪",r:85,fifa:11,clubStr:86,att:87,def:82,mid:86,stars:["J.Musiala","F.Wirtz","K.Havertz","T.Müller","A.Rüdiger"]},
+  CUW:{name:"Curaçao",       flag:"🏝️", r:61,fifa:82,clubStr:54,att:60,def:61,mid:60,stars:["R.Fer","K.Pinas","J.Daal","T.Martina","C.de Graaf"]},
+  CIV:{name:"Côte d'Ivoire", flag:"🇨🇮",r:76,fifa:33,clubStr:73,att:78,def:73,mid:76,stars:["S.Haller","F.Koné","J.Gradel","I.Sangaré","E.Dao"]},
+  ECU:{name:"Ecuador",       flag:"🇪🇨",r:72,fifa:29,clubStr:70,att:72,def:71,mid:72,stars:["E.Caicedo","P.Estupiñán","A.Méndez","K.Rodríguez","G.Ibarra"]},
+  NED:{name:"Netherlands",   flag:"🇳🇱",r:85,fifa:8,clubStr:85,att:86,def:83,mid:85,stars:["V.van Dijk","F.de Jong","C.Gakpo","D.Dumfries","X.Simons"]},
+  JPN:{name:"Japan",         flag:"🇯🇵",r:79,fifa:18,clubStr:76,att:79,def:77,mid:80,stars:["S.Mitoma","J.Ito","H.Morita","A.Ueda","T.Tomiyasu"]},
+  UKR:{name:"Ukraine",       flag:"🇺🇦",r:72,fifa:24,clubStr:73,att:72,def:71,mid:73,stars:["O.Zinchenko","M.Mudryk","V.Tsyhankov","A.Dovbyk","T.Stepanenko"]},
+  TUN:{name:"Tunisia",       flag:"🇹🇳",r:66,fifa:47,clubStr:63,att:65,def:67,mid:65,stars:["N.Sliti","Y.Msakni","E.Khazri","M.Ben Romdhane","A.Ben Amor"]},
+  BEL:{name:"Belgium",       flag:"🇧🇪",r:82,fifa:6,clubStr:83,att:83,def:80,mid:83,stars:["K.De Bruyne","L.Trossard","T.Hazard","R.Lukaku","A.Onana"]},
+  EGY:{name:"Egypt",         flag:"🇪🇬",r:73,fifa:30,clubStr:70,att:74,def:71,mid:72,stars:["M.Salah","O.Kamal","A.Hamdi","T.Hamed","M.El-Shenawy"]},
+  IRN:{name:"IR Iran",       flag:"🇮🇷",r:70,fifa:32,clubStr:66,att:70,def:69,mid:70,stars:["M.Taremi","S.Jahanbakhsh","A.Ezatolahi","S.Hosseini","A.Ansarifard"]},
+  NZL:{name:"New Zealand",   flag:"🇳🇿",r:63,fifa:94,clubStr:60,att:62,def:63,mid:62,stars:["C.Wood","L.Donaldson","T.Garbett","B.Old","J.Sail"]},
+  ESP:{name:"Spain",         flag:"🇪🇸",r:89,fifa:4,clubStr:90,att:90,def:87,mid:91,stars:["L.Yamal","P.Gavi","R.Morata","P.Pedri","A.Grimaldo"]},
+  CPV:{name:"Cabo Verde",    flag:"🇨🇻",r:65,fifa:73,clubStr:61,att:64,def:65,mid:64,stars:["G.Ramos","J.Lopes","D.Fortes","E.Tavares","H.Semedo"]},
+  KSA:{name:"Saudi Arabia",  flag:"🇸🇦",r:70,fifa:56,clubStr:68,att:70,def:69,mid:70,stars:["S.Al-Dawsari","M.Al-Burayk","F.Al-Ghaddaf","A.Al-Abid","M.Kanno"]},
+  URU:{name:"Uruguay",       flag:"🇺🇾",r:81,fifa:15,clubStr:80,att:82,def:80,mid:81,stars:["F.Valverde","D.Núñez","R.Araújo","M.Olivera","G.De Arrascaeta"]},
+  FRA:{name:"France",        flag:"🇫🇷",r:90,fifa:2,clubStr:91,att:92,def:88,mid:90,stars:["K.Mbappé","O.Dembélé","A.Tchouaméni","A.Camavinga","W.Saliba"]},
+  SEN:{name:"Senegal",       flag:"🇸🇳",r:77,fifa:20,clubStr:75,att:76,def:76,mid:77,stars:["S.Mané","I.Gueye","K.Kouyaté","N.Mendy","I.Sarr"]},
+  IRQ:{name:"Iraq",          flag:"🇮🇶",r:64,fifa:55,clubStr:60,att:63,def:64,mid:63,stars:["A.Hussein","A.Al-Jubouri","B.Mohammed","A.Karrar","H.Kadhem"]},
+  NOR:{name:"Norway",        flag:"🇳🇴",r:80,fifa:22,clubStr:79,att:83,def:76,mid:79,stars:["E.Haaland","M.Ødegaard","A.Strand","K.Thorstvedt","J.Strand Larsen"]},
+  ARG:{name:"Argentina",     flag:"🇦🇷",r:92,fifa:1,clubStr:89,att:93,def:88,mid:92,stars:["L.Messi","J.Álvarez","R.De Paul","A.Mac Allister","L.Martínez"]},
+  ALG:{name:"Algeria",       flag:"🇩🇿",r:73,fifa:37,clubStr:71,att:73,def:71,mid:73,stars:["R.Mahrez","Y.Benrahma","I.Bennacer","B.Bensebaini","A.Slimani"]},
+  AUT:{name:"Austria",       flag:"🇦🇹",r:76,fifa:28,clubStr:75,att:76,def:74,mid:77,stars:["D.Alaba","M.Sabitzer","C.Gregoritsch","P.Wimmer","R.Baumgartner"]},
+  JOR:{name:"Jordan",        flag:"🇯🇴",r:63,fifa:68,clubStr:59,att:61,def:64,mid:62,stars:["M.Al-Dmeiri","Y.Al-Naimat","M.Abu Zema","O.Al-Daradkah","A.Mousa"]},
+  POR:{name:"Portugal",      flag:"🇵🇹",r:87,fifa:7,clubStr:87,att:89,def:84,mid:87,stars:["C.Ronaldo","B.Fernandes","R.Leão","B.Silva","D.Costa"]},
+  COD:{name:"Congo DR",      flag:"🇨🇩",r:63,fifa:46,clubStr:62,att:62,def:63,mid:62,stars:["W.Bongonda","C.Kayembe","D.Bolasie","T.Lukebakio","M.Ngonda"]},
+  UZB:{name:"Uzbekistan",    flag:"🇺🇿",r:67,fifa:62,clubStr:63,att:66,def:67,mid:66,stars:["J.Yakhshiliqov","S.Shomurodov","B.Tursunov","O.Alijonov","S.Masharipov"]},
+  COL:{name:"Colombia",      flag:"🇨🇴",r:80,fifa:12,clubStr:79,att:81,def:78,mid:80,stars:["L.Díaz","D.Uribe","Y.Mina","J.Lerma","R.Arias"]},
+  ENG:{name:"England",       flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",r:86,fifa:3,clubStr:87,att:87,def:84,mid:86,stars:["J.Bellingham","B.Saka","H.Kane","P.Foden","T.Alexander-Arnold"]},
+  CRO:{name:"Croatia",       flag:"🇭🇷",r:78,fifa:10,clubStr:77,att:77,def:78,mid:79,stars:["L.Modrić","I.Perišić","M.Kovačić","M.Pašalić","L.Sosa"]},
+  GHA:{name:"Ghana",         flag:"🇬🇭",r:68,fifa:64,clubStr:66,att:68,def:66,mid:68,stars:["T.Partey","J.Ayew","M.Kudus","A.Ayew","D.Asante"]},
+  PAN:{name:"Panama",        flag:"🇵🇦",r:64,fifa:52,clubStr:61,att:62,def:65,mid:63,stars:["A.Avilés","B.Gómez","A.Murillo","E.Davis","J.Fajardo"]},
+};
+
+const GROUPS = {
+  A:["MEX","RSA","KOR","DEN"],
+  B:["CAN","ITA","QAT","SUI"],
+  C:["BRA","MAR","HAI","SCO"],
+  D:["USA","PAR","AUS","TUR"],
+  E:["GER","CUW","CIV","ECU"],
+  F:["NED","JPN","UKR","TUN"],
+  G:["BEL","EGY","IRN","NZL"],
+  H:["ESP","CPV","KSA","URU"],
+  I:["FRA","SEN","IRQ","NOR"],
+  J:["ARG","ALG","AUT","JOR"],
+  K:["POR","COD","UZB","COL"],
+  L:["ENG","CRO","GHA","PAN"],
+};
+
+// Official FIFA WC 2026 Group Stage Match Schedule (Matches 1-72)
+// Format: Matchday 1 (1v2, 3v4), Matchday 2 (1v3, 2v4), Matchday 3 (1v4, 2v3)
+const GROUP_SCHEDULE = {
+  1:{g:"A",t1:0,t2:1,d:"Jun 11"}, 2:{g:"A",t1:2,t2:3,d:"Jun 11"},
+  3:{g:"B",t1:0,t2:1,d:"Jun 12"}, 4:{g:"B",t1:2,t2:3,d:"Jun 12"},
+  5:{g:"C",t1:0,t2:1,d:"Jun 12"}, 6:{g:"C",t1:2,t2:3,d:"Jun 12"},
+  7:{g:"D",t1:0,t2:1,d:"Jun 13"}, 8:{g:"D",t1:2,t2:3,d:"Jun 13"},
+  9:{g:"E",t1:0,t2:1,d:"Jun 13"}, 10:{g:"E",t1:2,t2:3,d:"Jun 13"},
+  11:{g:"F",t1:0,t2:1,d:"Jun 14"}, 12:{g:"F",t1:2,t2:3,d:"Jun 14"},
+  13:{g:"G",t1:0,t2:1,d:"Jun 14"}, 14:{g:"G",t1:2,t2:3,d:"Jun 14"},
+  15:{g:"H",t1:0,t2:1,d:"Jun 15"}, 16:{g:"H",t1:2,t2:3,d:"Jun 15"},
+  17:{g:"I",t1:0,t2:1,d:"Jun 15"}, 18:{g:"I",t1:2,t2:3,d:"Jun 15"},
+  19:{g:"J",t1:0,t2:1,d:"Jun 16"}, 20:{g:"J",t1:2,t2:3,d:"Jun 16"},
+  21:{g:"K",t1:0,t2:1,d:"Jun 16"}, 22:{g:"K",t1:2,t2:3,d:"Jun 16"},
+  23:{g:"L",t1:0,t2:1,d:"Jun 17"}, 24:{g:"L",t1:2,t2:3,d:"Jun 17"},
+  25:{g:"A",t1:0,t2:2,d:"Jun 17"}, 26:{g:"A",t1:1,t2:3,d:"Jun 17"},
+  27:{g:"B",t1:0,t2:2,d:"Jun 18"}, 28:{g:"B",t1:1,t2:3,d:"Jun 18"},
+  29:{g:"C",t1:0,t2:2,d:"Jun 18"}, 30:{g:"C",t1:1,t2:3,d:"Jun 18"},
+  31:{g:"D",t1:0,t2:2,d:"Jun 19"}, 32:{g:"D",t1:1,t2:3,d:"Jun 19"},
+  33:{g:"E",t1:0,t2:2,d:"Jun 19"}, 34:{g:"E",t1:1,t2:3,d:"Jun 19"},
+  35:{g:"F",t1:0,t2:2,d:"Jun 20"}, 36:{g:"F",t1:1,t2:3,d:"Jun 20"},
+  37:{g:"G",t1:0,t2:2,d:"Jun 20"}, 38:{g:"G",t1:1,t2:3,d:"Jun 20"},
+  39:{g:"H",t1:0,t2:2,d:"Jun 21"}, 40:{g:"H",t1:1,t2:3,d:"Jun 21"},
+  41:{g:"I",t1:0,t2:2,d:"Jun 21"}, 42:{g:"I",t1:1,t2:3,d:"Jun 21"},
+  43:{g:"J",t1:0,t2:2,d:"Jun 22"}, 44:{g:"J",t1:1,t2:3,d:"Jun 22"},
+  45:{g:"K",t1:0,t2:2,d:"Jun 22"}, 46:{g:"K",t1:1,t2:3,d:"Jun 22"},
+  47:{g:"L",t1:0,t2:2,d:"Jun 23"}, 48:{g:"L",t1:1,t2:3,d:"Jun 23"},
+  49:{g:"A",t1:0,t2:3,d:"Jun 23"}, 50:{g:"A",t1:1,t2:2,d:"Jun 23"},
+  51:{g:"B",t1:0,t2:3,d:"Jun 24"}, 52:{g:"B",t1:1,t2:2,d:"Jun 24"},
+  53:{g:"C",t1:0,t2:3,d:"Jun 24"}, 54:{g:"C",t1:1,t2:2,d:"Jun 24"},
+  55:{g:"D",t1:0,t2:3,d:"Jun 25"}, 56:{g:"D",t1:1,t2:2,d:"Jun 25"},
+  57:{g:"E",t1:0,t2:3,d:"Jun 25"}, 58:{g:"E",t1:1,t2:2,d:"Jun 25"},
+  59:{g:"F",t1:0,t2:3,d:"Jun 26"}, 60:{g:"F",t1:1,t2:2,d:"Jun 26"},
+  61:{g:"G",t1:0,t2:3,d:"Jun 26"}, 62:{g:"G",t1:1,t2:2,d:"Jun 26"},
+  63:{g:"H",t1:0,t2:3,d:"Jun 27"}, 64:{g:"H",t1:1,t2:2,d:"Jun 27"},
+  65:{g:"I",t1:0,t2:3,d:"Jun 27"}, 66:{g:"I",t1:1,t2:2,d:"Jun 27"},
+  67:{g:"J",t1:0,t2:3,d:"Jun 28"}, 68:{g:"J",t1:1,t2:2,d:"Jun 28"},
+  69:{g:"K",t1:0,t2:3,d:"Jun 28"}, 70:{g:"K",t1:1,t2:2,d:"Jun 28"},
+  71:{g:"L",t1:0,t2:3,d:"Jun 29"}, 72:{g:"L",t1:1,t2:2,d:"Jun 29"},
+};
+
+let SIM = {};
+let variance = 30;
+
+document.getElementById('vSlider').addEventListener('input', function(){ variance=+this.value; document.getElementById('vVal').textContent=variance+'%'; });
+
+// ── Safe RNG (Mulberry32 — never produces 0, no infinite loops) ──
+let _seed = 1;
+function srng() {
+  _seed |= 0; _seed = _seed + 0x6D2B79F5 | 0;
+  let t = Math.imul(_seed ^ _seed >>> 15, 1 | _seed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+}
+function rng(lo=0, hi=1) { return lo + srng() * (hi - lo); }
+function irand(lo, hi) { return Math.floor(lo + srng() * (hi - lo + 1)); }
+
+// ── Poisson goals via lookup table (fast, no loop risk) ──────
+function poissonGoals(lambda) {
+  // Knuth algorithm — guaranteed to terminate in bounded iterations for lambda < 20
+  lambda = Math.max(0.1, Math.min(lambda, 8)); // clamp to safe range
+  const L = Math.exp(-lambda);
+  let k = 0, p = 1;
+  do { k++; p *= srng(); } while (p > L && k < 15);
+  return k - 1;
+}
+
+// ── Expected goals model with FIFA ranking + club strength ────
+function calcXG(attacker, defender) {
+  const ta = T[attacker], td = T[defender];
+  
+  // Base expected goals
+  const base = 1.15;
+  
+  // Attack vs Defence tactical edge
+  const tacticalEdge = (ta.att - td.def) / 40;
+  
+  // FIFA ranking bonus (lower rank = better)
+  // Top 10 teams get boost, bottom 50 teams get penalty
+  const fifaBonus = (50 - ta.fifa) / 200;  // ranges from ~0.24 (rank 1) to -0.16 (rank 100)
+  const fifaPenalty = (td.fifa - 50) / 200;
+  
+  // Club strength factor — teams with players in top leagues perform better
+  const clubEdge = (ta.clubStr - td.clubStr) / 50;
+  
+  // Form factor — simulate recent form based on overall rating
+  const formFactor = (ta.r - 75) / 100;  // better teams are more consistent
+  
+  // Combined strength calculation
+  let xg = base + tacticalEdge + fifaBonus + fifaPenalty + clubEdge + formFactor;
+  
+  // Add variance based on slider
+  const noise = (srng() - 0.5) * (variance / 100) * 1.6;
+  xg += noise;
+  
+  // Clamp to realistic range
+  return Math.max(0.15, Math.min(xg, 4.2));
+}
+
+function simGroupMatch(a, b) {
+  return { goalsA: poissonGoals(calcXG(a, b)), goalsB: poissonGoals(calcXG(b, a)) };
+}
+
+function simKO(a, b) {
+  let { goalsA, goalsB } = simGroupMatch(a, b);
+  let aet = false, pens = null;
+  if (goalsA === goalsB) {
+    aet = true;
+    // AET: probability based on FIFA ranking and club strength
+    const aetChance = 0.25 + (T[a].r - T[b].r) / 400;
+    if (srng() < aetChance) {
+      // Higher FIFA ranking (lower number) = more likely to score
+      const aProb = (100 - T[a].fifa) / (200 - T[a].fifa - T[b].fifa);
+      srng() < aProb ? goalsA++ : goalsB++;
+    }
+    if (goalsA === goalsB) {
+      // Penalty shootout — FIFA rank and club strength affect accuracy
+      const baseAcc = 0.70;
+      const accA = Math.min(0.85, baseAcc + (100 - T[a].fifa) / 300 + T[a].clubStr / 300);
+      const accB = Math.min(0.85, baseAcc + (100 - T[b].fifa) / 300 + T[b].clubStr / 300);
+      let pA = 0, pB = 0;
+      for (let i = 0; i < 5; i++) { if (srng() < accA) pA++; if (srng() < accB) pB++; }
+      let sdRounds = 0;
+      while (pA === pB && sdRounds < 20) {
+        if (srng() < accA) pA++;
+        if (srng() < accB) pB++;
+        sdRounds++;
+      }
+      if (pA === pB) { T[a].fifa <= T[b].fifa ? pA++ : pB++; }
+      pens = { a: pA, b: pB };
+    }
+  }
+  const winner = pens ? (pens.a > pens.b ? a : b) : (goalsA > goalsB ? a : b);
+  return { goalsA, goalsB, aet, pens, winner };
+}
+
+// ── Scorers ───────────────────────────────────────────────────
+let scorers = {}, assists = {};
+function logGoals(team, goals) {
+  if (!goals) return;
+  const st = T[team].stars;
+  for (let i = 0; i < goals; i++) {
+    const sc = st[irand(0, st.length - 1)];
+    scorers[sc] = (scorers[sc] || 0) + 1;
+    if (!scorers[sc + '_t']) scorers[sc + '_t'] = team;
+    let as = st[irand(0, st.length - 1)];
+    assists[as] = (assists[as] || 0) + 1;
+    if (!assists[as + '_t']) assists[as + '_t'] = team;
+  }
+}
+
+// ── Group stage ───────────────────────────────────────────────
+function runGroups() {
+  SIM.groups = {}; SIM.thirds = [];
+  
+  // Initialize groups
+  Object.entries(GROUPS).forEach(([g, teams]) => {
+    const st = {};
+    teams.forEach(t => { st[t] = { w:0, d:0, l:0, gf:0, ga:0, pts:0 }; });
+    SIM.groups[g] = { ranked: [], stats: st, matches: [] };
+  });
+  
+  // Play matches in official calendar order (matches 1-72)
+  for (let matchNum = 1; matchNum <= 72; matchNum++) {
+    const sched = GROUP_SCHEDULE[matchNum];
+    const teams = GROUPS[sched.g];
+    const a = teams[sched.t1], b = teams[sched.t2];
+    const { goalsA, goalsB } = simGroupMatch(a, b);
+    
+    logGoals(a, goalsA); logGoals(b, goalsB);
+    
+    const grp = SIM.groups[sched.g];
+    grp.matches.push({ num: matchNum, a, b, goalsA, goalsB, date: sched.d });
+    
+    const st = grp.stats;
+    st[a].gf += goalsA; st[a].ga += goalsB;
+    st[b].gf += goalsB; st[b].ga += goalsA;
+    if (goalsA > goalsB)      { st[a].w++; st[a].pts += 3; st[b].l++; }
+    else if (goalsB > goalsA) { st[b].w++; st[b].pts += 3; st[a].l++; }
+    else                      { st[a].d++; st[b].d++; st[a].pts++; st[b].pts++; }
+  }
+  
+  // Rank teams in each group
+  Object.entries(GROUPS).forEach(([g, teams]) => {
+    const st = SIM.groups[g].stats;
+    const ranked = [...teams].sort((a, b) => {
+      if (st[b].pts !== st[a].pts) return st[b].pts - st[a].pts;
+      const gdA = st[a].gf - st[a].ga, gdB = st[b].gf - st[b].ga;
+      if (gdB !== gdA) return gdB - gdA;
+      return st[b].gf - st[a].gf;
+    });
+    SIM.groups[g].ranked = ranked;
+    
+    const t3 = ranked[2];
+    SIM.thirds.push({ team: t3, grp: g, pts: st[t3].pts, gd: st[t3].gf - st[t3].ga, gf: st[t3].gf });
+  });
+  
+  SIM.thirds.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+  SIM.b8 = SIM.thirds.slice(0, 8);
+}
+
+function G1(g) { return SIM.groups[g].ranked[0]; }
+function G2(g) { return SIM.groups[g].ranked[1]; }
+
+const usedThirds = new Set();
+function bestThird(groupSet) {
+  for (const entry of SIM.b8) {
+    if (groupSet.includes(entry.grp) && !usedThirds.has(entry.team)) {
+      usedThirds.add(entry.team); return entry.team;
+    }
+  }
+  for (const entry of SIM.thirds) {
+    if (!usedThirds.has(entry.team)) { usedThirds.add(entry.team); return entry.team; }
+  }
+  return SIM.thirds[0].team;
+}
+
+function koMatch(num, a, b) {
+  const res = simKO(a, b);
+  logGoals(a, res.goalsA); logGoals(b, res.goalsB);
+  return { num, a, b, ...res };
+}
+
+// ── Knockout with exact schedule match numbers ────────────────
+function runKnockout() {
+  usedThirds.clear();
+  const R = {};
+  // Round of 32 (73–88) — per official FIFA schedule
+  R[73]=koMatch(73, G2("A"), G2("B"));  // 2A v 2B
+  R[74]=koMatch(74, G1("E"), bestThird(["A","B","C","D","F"]));  // 1E v 3(ABCDF)
+  R[75]=koMatch(75, G1("F"), G2("C"));  // 1F v 2C
+  R[76]=koMatch(76, G1("C"), G2("F"));  // 1C v 2F
+  R[77]=koMatch(77, G1("I"), bestThird(["C","D","F","G","H"]));  // 1I v 3(CDFGH)
+  R[78]=koMatch(78, G2("E"), G2("I"));  // 2E v 2I
+  R[79]=koMatch(79, G1("A"), bestThird(["C","E","F","H","I"]));  // 1A v 3(CEFHI)
+  R[80]=koMatch(80, G1("L"), bestThird(["E","H","I","J","K"]));  // 1L v 3(EHIJK)
+  R[81]=koMatch(81, G1("D"), bestThird(["B","E","F","I","J"]));  // 1D v 3(BEFIJ)
+  R[82]=koMatch(82, G1("G"), bestThird(["A","E","H","I","J"]));  // 1G v 3(AEHIJ)
+  R[83]=koMatch(83, G2("K"), G2("L"));  // 2K v 2L
+  R[84]=koMatch(84, G1("H"), G2("J"));  // 1H v 2J
+  R[85]=koMatch(85, G1("B"), bestThird(["E","F","G","I","J"]));  // 1B v 3(EFGIJ)
+  R[86]=koMatch(86, G1("J"), G2("H"));  // 1J v 2H
+  R[87]=koMatch(87, G1("K"), bestThird(["D","E","I","J","L"]));  // 1K v 3(DEIJL)
+  R[88]=koMatch(88, G2("D"), G2("G"));  // 2D v 2G
+  // Round of 16 (89–96)
+  R[89]=koMatch(89, R[74].winner, R[77].winner);
+  R[90]=koMatch(90, R[73].winner, R[75].winner);  // W73 v W75
+  R[91]=koMatch(91, R[76].winner, R[78].winner);  // W76 v W78
+  R[92]=koMatch(92, R[79].winner, R[80].winner);
+  R[93]=koMatch(93, R[83].winner, R[84].winner);
+  R[94]=koMatch(94, R[81].winner, R[82].winner);  // W81 v W82 (corrected)
+  R[95]=koMatch(95, R[86].winner, R[88].winner);  // W86 v W88
+  R[96]=koMatch(96, R[85].winner, R[87].winner);  // W85 v W87 (corrected)
+  // Quarter-Finals (97–100)
+  R[97]=koMatch(97,  R[89].winner, R[90].winner);
+  R[98]=koMatch(98,  R[93].winner, R[94].winner);  // W93 v W94 (corrected)
+  R[99]=koMatch(99,  R[91].winner, R[92].winner);
+  R[100]=koMatch(100, R[95].winner, R[96].winner);  // W95 v W96 (corrected)
+  // Semi-Finals (101–102)
+  R[101]=koMatch(101, R[97].winner,  R[98].winner);
+  R[102]=koMatch(102, R[99].winner,  R[100].winner);
+  // Bronze Final (103) — losers of semis
+  const sf1L = R[101].a === R[101].winner ? R[101].b : R[101].a;
+  const sf2L = R[102].a === R[102].winner ? R[102].b : R[102].a;
+  R[103]=koMatch(103, sf1L, sf2L);
+  // Final (104)
+  R[104]=koMatch(104, R[101].winner, R[102].winner);
+  SIM.ko = R;
+}
+
+// ── Master run function ───────────────────────────────────────
+// All simulation runs synchronously FIRST, then the progress bar
+// animates purely cosmetically — no risk of hanging.
+function runSimulation() {
+  // Reseed
+  _seed = (Math.random() * 0x7fffffff) | 1;
+  scorers = {}; assists = {}; SIM = {};
+
+  const overlay = document.getElementById("loadingOverlay");
+  const bar     = document.getElementById("progBar");
+  const sub     = document.getElementById("progSub");
+  overlay.style.opacity = "1";
+  overlay.classList.remove("hidden");
+  document.getElementById("mainContent").style.opacity = "0";
+
+  // Run ALL simulation synchronously right now (fast, < 5ms)
+  try {
+    runGroups();
+    runKnockout();
+  } catch(e) {
+    console.error("Simulation error:", e);
+  }
+
+  // Cosmetic progress animation — purely visual, data already computed
+  const steps = [
+    [10,  "Group Stage..."],
+    [25,  "Ranking third-place teams..."],
+    [42,  "Round of 32 · Matches 73–88..."],
+    [58,  "Round of 16 · Matches 89–96..."],
+    [72,  "Quarter-Finals · Matches 97–100..."],
+    [84,  "Semi-Finals · Matches 101–102..."],
+    [94,  "Final & Bronze · Matches 103–104..."],
+    [100, "Done!"],
+  ];
+  let step = 0;
+  const ticker = setInterval(() => {
+    if (step >= steps.length) {
+      clearInterval(ticker);
+      
+      // Force hide overlay immediately
+      overlay.style.display = "none";
+      
+      // Render and show content immediately
+      const main = document.getElementById("mainContent");
+      
+      // Render all content
+      try {
+        renderAll();
+      } catch(e) {
+        console.error("Render error:", e);
+      }
+      
+      // Scroll to top of page
+      window.scrollTo(0, 0);
+      
+      // Make visible immediately
+      main.style.opacity = "1";
+      
+      return;
+    }
+    bar.style.width = steps[step][0] + "%";
+    sub.textContent = steps[step][1];
+    step++;
+  }, 200);
+}
+
+// ── RENDER ────────────────────────────────────────────────────
+function renderAll(){ 
+  renderPodium(); 
+  renderGroups(); 
+  renderKnockout(); 
+  renderStats(); 
+}
+
+function renderPodium(){
+  const ko=SIM.ko;
+  // Final: match 104
+  const finalist_a = ko[104].a, finalist_b = ko[104].b;
+  const champion = ko[104].winner;
+  const runnerUp = champion===finalist_a ? finalist_b : finalist_a;
+  // Bronze: match 103
+  const bronze3rd = ko[103].winner;
+  const bronze4th = ko[103].a===bronze3rd ? ko[103].b : ko[103].a;
+  // Sanity: these must all be different teams
+  // (they structurally are: SF losers play bronze, SF winners play final)
+
+  const ft=`${T[ko[104].a].name} ${ko[104].goalsA}–${ko[104].goalsB} ${T[ko[104].b].name}${ko[104].aet&&!ko[104].pens?' (AET)':''}${ko[104].pens?` · Pens ${ko[104].pens.a}–${ko[104].pens.b}`:''}`;
+
+  document.getElementById("podiumSection").innerHTML=`
+    <div class="pod-lbl">WORLD CHAMPION 2026</div>
+    <span class="champ-flag">${T[champion].flag}</span>
+    <div class="champ-name">${T[champion].name.toUpperCase()}</div>
+    <div class="champ-score">Match 104 — ${ft}</div>
+    <div class="podium-row">
+      <div class="pod-item">
+        <span class="pod-flag">${T[runnerUp].flag}</span>
+        <div class="pod-pos silver">2nd</div>
+        <div class="pod-team">${T[runnerUp].name}</div>
+      </div>
+      <div class="pod-item">
+        <span class="pod-flag">${T[bronze3rd].flag}</span>
+        <div class="pod-pos bronze">3rd</div>
+        <div class="pod-team">${T[bronze3rd].name}</div>
+      </div>
+      <div class="pod-item">
+        <span class="pod-flag">${T[bronze4th].flag}</span>
+        <div class="pod-pos fourth">4th</div>
+        <div class="pod-team">${T[bronze4th].name}</div>
+      </div>
+    </div>`;
+}
+
+function renderGroups(){
+  const grid=document.getElementById("groupsGrid"); grid.innerHTML="";
+  Object.entries(SIM.groups).forEach(([grp,{ranked,stats,matches}])=>{
+    const card=document.createElement("div"); card.className="group-card";
+    
+    // Standings table
+    let html = `<div class="grp-hdr"><span class="grp-letter">GROUP ${grp}</span></div>
+      <table class="grp-tbl"><thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>
+      ${ranked.map((t,i)=>{ const s=stats[t],gd=s.gf-s.ga; return `<tr class="${i<2?'qualified':''}"><td><span class="pos-n p${i+1}">${i+1}</span>${T[t].flag} ${T[t].name}</td><td>${s.w+s.d+s.l}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td><td>${gd>=0?'+':''}${gd}</td><td><strong>${s.pts}</strong></td></tr>`; }).join("")}
+      </tbody></table>`;
+    
+    // Match results (chronological order)
+    matches.forEach(m=>{
+      const isWinA = m.goalsA > m.goalsB;
+      const isWinB = m.goalsB > m.goalsA;
+      const isDraw = m.goalsA === m.goalsB;
+      html += `
+        <div class="group-match">
+          <div class="gm-team ${isWinA?'winner':isDraw?'draw':'loser'}">
+            <span>${T[m.a].flag}</span>
+            <span>${T[m.a].name}</span>
+          </div>
+          <div class="gm-score">${m.goalsA} – ${m.goalsB}</div>
+          <div class="gm-team ${isWinB?'winner':isDraw?'draw':'loser'}">
+            <span>${T[m.b].name}</span>
+            <span>${T[m.b].flag}</span>
+          </div>
+        </div>`;
+    });
+    
+    card.innerHTML = html;
+    grid.appendChild(card);
+  });
+}
+function matchCardHTML(m){
+  const wA=m.winner===m.a;
+  const meta=m.pens?`Pens ${m.pens.a}–${m.pens.b}`:(m.aet?'AET':'FT');
+  return `<div class="match-card">
+    <div class="match-num">MATCH ${m.num}</div>
+    <div class="match-team ${wA?'winner':'loser'}"><span>${T[m.a].flag} ${T[m.a].name}</span><span class="match-score">${m.goalsA}</span></div>
+    <div class="match-divider"></div>
+    <div class="match-team ${!wA?'winner':'loser'}"><span>${T[m.b].flag} ${T[m.b].name}</span><span class="match-score">${m.goalsB}</span></div>
+    <div class="match-meta">${meta}</div>
+  </div>`;
+}
+
+function renderKnockout(){
+  const wrap=document.getElementById("knockoutWrap"); wrap.innerHTML="";
+  const ko=SIM.ko;
+  const rounds=[
+    {title:"ROUND OF 32",    nums:[73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88]},
+    {title:"ROUND OF 16",    nums:[89,90,91,92,93,94,95,96]},
+    {title:"QUARTER-FINALS", nums:[97,98,99,100]},
+    {title:"SEMI-FINALS",    nums:[101,102]},
+    {title:"BRONZE FINAL",   nums:[103]},
+    {title:"⭐ THE FINAL",   nums:[104]},
+  ];
+  rounds.forEach(rd=>{
+    const col=document.createElement("div"); col.className="round-col";
+    col.innerHTML=`<div class="round-title">${rd.title}</div>`;
+    rd.nums.forEach(n=>{ col.innerHTML+=matchCardHTML(ko[n]); });
+    wrap.appendChild(col);
+  });
+}
+
+function renderStats(){
+  const grid=document.getElementById("statsGrid"); grid.innerHTML="";
+  const topS=Object.entries(scorers).filter(([k])=>!k.endsWith('_t')).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const topA=Object.entries(assists).filter(([k])=>!k.endsWith('_t')).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const makeCard=(title,data,src)=>{
+    const c=document.createElement("div"); c.className="stat-card";
+    c.innerHTML=`<h3>${title}</h3>`+data.map(([p,v],i)=>{
+      const tm=src[p+'_t'];
+      return `<div class="stat-row"><span class="stat-rank">${i+1}</span><span>${tm?T[tm].flag:''}</span><span class="stat-player">${p}</span><span class="stat-country">${tm?T[tm].name:''}</span><span class="stat-val">${v}</span></div>`;
+    }).join("");
+    return c;
+  };
+  grid.appendChild(makeCard("⚽ Top Scorers",topS,scorers));
+  grid.appendChild(makeCard("🎯 Top Assists",topA,assists));
+}
+
+window.addEventListener("load",()=>setTimeout(runSimulation,150));
+</script>
+
+</body>
+</html>
