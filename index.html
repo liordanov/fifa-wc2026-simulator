@@ -660,13 +660,24 @@ function renderPodium(){
 
 function renderGroups(){
   const grid=document.getElementById("groupsGrid"); grid.innerHTML="";
+  
+  // Get the team codes of the best 8 third-place teams
+  const best8Thirds = new Set(SIM.b8.map(entry => entry.team));
+  
   Object.entries(SIM.groups).forEach(([grp,{ranked,stats,matches}])=>{
     const card=document.createElement("div"); card.className="group-card";
     
     // Standings table
     let html = `<div class="grp-hdr"><span class="grp-letter">GROUP ${grp}</span></div>
       <table class="grp-tbl"><thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>
-      ${ranked.map((t,i)=>{ const s=stats[t],gd=s.gf-s.ga; return `<tr class="${i<2?'qualified':''}"><td><span class="pos-n p${i+1}">${i+1}</span>${T[t].flag} ${T[t].name}</td><td>${s.w+s.d+s.l}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td><td>${gd>=0?'+':''}${gd}</td><td><strong>${s.pts}</strong></td></tr>`; }).join("")}
+      ${ranked.map((t,i)=>{ 
+        const s=stats[t],gd=s.gf-s.ga; 
+        // Bold if top 2, or if 3rd place and in best 8
+        const isBold = i<2 || (i===2 && best8Thirds.has(t));
+        const teamName = isBold ? `<strong>${T[t].name}</strong>` : T[t].name; 
+        const rowClass = i<2 || (i===2 && best8Thirds.has(t)) ? 'qualified' : '';
+        return `<tr class="${rowClass}"><td><span class="pos-n p${i+1}">${i+1}</span>${T[t].flag} ${teamName}</td><td>${s.w+s.d+s.l}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td><td>${gd>=0?'+':''}${gd}</td><td><strong>${s.pts}</strong></td></tr>`; 
+      }).join("")}
       </tbody></table>`;
     
     // Match results (chronological order)
