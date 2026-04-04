@@ -134,7 +134,7 @@ main { max-width:1700px; margin:0 auto; padding:26px 18px; }
   </div>
   <div class="hdr-right">
     <button class="sim-btn" onclick="runSimulation()">🔄 RE-SIMULATE</button>
-    <div class="var-row">UPSET FACTOR <input type="range" id="vSlider" min="0" max="100" value="20"> <span id="vVal">20%</span></div>
+    <div class="var-row">UPSET FACTOR <input type="range" id="vSlider" min="0" max="100" value="3"> <span id="vVal">3%</span></div>
   </div>
 </header>
 
@@ -268,7 +268,7 @@ const GROUP_SCHEDULE = {
 };
 
 let SIM = {};
-let variance = 20;
+let variance = 3;
 
 document.getElementById('vSlider').addEventListener('input', function(){ variance=+this.value; document.getElementById('vVal').textContent=variance+'%'; });
 
@@ -325,57 +325,61 @@ function calcXG(attacker, defender) {
 // ── Monte Carlo Group Match Simulation ────────────────────────
 function simGroupMatch(a, b) {
   const runs = getMonteCarloRuns();
-  const results = {};
+  const scoreCounts = {};
   
   // Run multiple simulations
   for (let i = 0; i < runs; i++) {
     const goalsA = poissonGoals(calcXG(a, b));
     const goalsB = poissonGoals(calcXG(b, a));
     const key = `${goalsA}-${goalsB}`;
-    results[key] = (results[key] || 0) + 1;
+    scoreCounts[key] = (scoreCounts[key] || 0) + 1;
   }
   
-  // Pick most common result (highest probability)
-  let maxCount = 0;
-  let bestResult = null;
-  for (const [scoreKey, count] of Object.entries(results)) {
-    if (count > maxCount) {
-      maxCount = count;
-      bestResult = scoreKey;
-    }
-  }
+  // Sort scores by frequency (most common first)
+  const sortedScores = Object.entries(scoreCounts)
+    .sort((a, b) => b[1] - a[1]);
   
-  const [goalsA, goalsB] = bestResult.split('-').map(Number);
+  // Select score based on upset factor
+  // 0% upset = index 0 (most likely)
+  // 100% upset = last index (least likely)
+  // 20% upset = 80% probability = index at 20% position
+  const percentile = variance / 100;
+  const targetIndex = Math.floor(percentile * (sortedScores.length - 1));
+  const selectedScore = sortedScores[targetIndex][0];
+  
+  const [goalsA, goalsB] = selectedScore.split('-').map(Number);
   return { goalsA, goalsB };
 }
 
 // ── Monte Carlo Knockout Match Simulation ─────────────────────
 function simKO(a, b) {
   const runs = getMonteCarloRuns();
-  const outcomes = {};
+  const outcomeCounts = {};
   
   // Run multiple simulations
   for (let i = 0; i < runs; i++) {
     const result = simSingleKO(a, b);
-    const key = `${result.goalsA}-${result.goalsB}-${result.aet}-${result.pens?.a || 'n'}-${result.pens?.b || 'n'}`;
+    const key = `${result.goalsA}-${result.goalsB}-${result.aet}-${result.pens?.a || 'n'}-${result.pens?.b || 'n'}-${result.winner}`;
     
-    if (!outcomes[key]) {
-      outcomes[key] = { ...result, count: 0 };
+    if (!outcomeCounts[key]) {
+      outcomeCounts[key] = { ...result, count: 0 };
     }
-    outcomes[key].count++;
+    outcomeCounts[key].count++;
   }
   
-  // Pick most common outcome
-  let maxCount = 0;
-  let bestOutcome = null;
-  for (const outcome of Object.values(outcomes)) {
-    if (outcome.count > maxCount) {
-      maxCount = outcome.count;
-      bestOutcome = outcome;
-    }
-  }
+  // Sort outcomes by frequency (most common first)
+  const sortedOutcomes = Object.values(outcomeCounts)
+    .sort((a, b) => b.count - a.count);
   
-  const { goalsA, goalsB, aet, pens, winner } = bestOutcome;
+  // Select outcome based on upset factor
+  // 0% upset = index 0 (most likely)
+  // 100% upset = last index (least likely)
+  // 20% upset = 80% probability = index at 20% position
+  const percentile = variance / 100;
+  const targetIndex = Math.floor(percentile * (sortedOutcomes.length - 1));
+  const selectedOutcome = sortedOutcomes[targetIndex];
+  
+  const { goalsA, goalsB, aet, pens, winner } = selectedOutcome;
   return { goalsA, goalsB, aet, pens, winner };
 }
 
