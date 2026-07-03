@@ -559,23 +559,23 @@ function runKnockout() {
   const allGroupsReal = Array.from({length:72}, (_,i) => i+1).every(n => REAL_RESULTS[n] !== undefined);
 
   if (allGroupsReal) {
-    // Actual confirmed FIFA World Cup 2026 Round of 32 bracket
+    // Actual confirmed FIFA World Cup 2026 Round of 32 bracket (official match numbers)
     R[73]=koMatch(73, 'RSA','CAN');
-    R[74]=koMatch(74, 'ARG','CPV');
+    R[74]=koMatch(74, 'GER','PAR');
     R[75]=koMatch(75, 'NED','MAR');
     R[76]=koMatch(76, 'BRA','JPN');
-    R[77]=koMatch(77, 'AUS','EGY');
+    R[77]=koMatch(77, 'FRA','SWE');
     R[78]=koMatch(78, 'CIV','NOR');
-    R[79]=koMatch(79, 'SUI','ALG');
-    R[80]=koMatch(80, 'COL','GHA');
-    R[81]=koMatch(81, 'MEX','ECU');
-    R[82]=koMatch(82, 'ENG','COD');
-    R[83]=koMatch(83, 'GER','PAR');
-    R[84]=koMatch(84, 'FRA','SWE');
-    R[85]=koMatch(85, 'ESP','AUT');
-    R[86]=koMatch(86, 'BEL','SEN');
-    R[87]=koMatch(87, 'POR','CRO');
-    R[88]=koMatch(88, 'USA','BIH');
+    R[79]=koMatch(79, 'MEX','ECU');
+    R[80]=koMatch(80, 'ENG','COD');
+    R[81]=koMatch(81, 'USA','BIH');
+    R[82]=koMatch(82, 'BEL','SEN');
+    R[83]=koMatch(83, 'POR','CRO');
+    R[84]=koMatch(84, 'ESP','AUT');
+    R[85]=koMatch(85, 'SUI','ALG');
+    R[86]=koMatch(86, 'ARG','CPV');
+    R[87]=koMatch(87, 'COL','GHA');
+    R[88]=koMatch(88, 'AUS','EGY');
   } else {
     // Round of 32 (73–88) — algorithmic assignment per official FIFA schedule
     R[73]=koMatch(73, G2("A"), G2("B"));  // 2A v 2B
