@@ -552,23 +552,49 @@ function koMatch(num, a, b) {
 function runKnockout() {
   usedThirds.clear();
   const R = {};
-  // Round of 32 (73–88) — per official FIFA schedule
-  R[73]=koMatch(73, G2("A"), G2("B"));  // 2A v 2B
-  R[74]=koMatch(74, G1("E"), bestThird(["A","B","C","D","F"]));  // 1E v 3(ABCDF)
-  R[75]=koMatch(75, G1("F"), G2("C"));  // 1F v 2C
-  R[76]=koMatch(76, G1("C"), G2("F"));  // 1C v 2F
-  R[77]=koMatch(77, G1("I"), bestThird(["C","D","F","G","H"]));  // 1I v 3(CDFGH)
-  R[78]=koMatch(78, G2("E"), G2("I"));  // 2E v 2I
-  R[79]=koMatch(79, G1("A"), bestThird(["C","E","F","H","I"]));  // 1A v 3(CEFHI)
-  R[80]=koMatch(80, G1("L"), bestThird(["E","H","I","J","K"]));  // 1L v 3(EHIJK)
-  R[81]=koMatch(81, G1("D"), bestThird(["B","E","F","I","J"]));  // 1D v 3(BEFIJ)
-  R[82]=koMatch(82, G1("G"), bestThird(["A","E","H","I","J"]));  // 1G v 3(AEHIJ)
-  R[83]=koMatch(83, G2("K"), G2("L"));  // 2K v 2L
-  R[84]=koMatch(84, G1("H"), G2("J"));  // 1H v 2J
-  R[85]=koMatch(85, G1("B"), bestThird(["E","F","G","I","J"]));  // 1B v 3(EFGIJ)
-  R[86]=koMatch(86, G1("J"), G2("H"));  // 1J v 2H
-  R[87]=koMatch(87, G1("K"), bestThird(["D","E","I","J","L"]));  // 1K v 3(DEIJL)
-  R[88]=koMatch(88, G2("D"), G2("G"));  // 2D v 2G
+
+  // If every one of the 72 group matches is a real result, we know the true
+  // Round of 32 bracket — use the actual confirmed matchups instead of our
+  // own approximate third-place assignment algorithm.
+  const allGroupsReal = Array.from({length:72}, (_,i) => i+1).every(n => REAL_RESULTS[n] !== undefined);
+
+  if (allGroupsReal) {
+    // Actual confirmed FIFA World Cup 2026 Round of 32 bracket
+    R[73]=koMatch(73, 'RSA','CAN');
+    R[74]=koMatch(74, 'ARG','CPV');
+    R[75]=koMatch(75, 'NED','MAR');
+    R[76]=koMatch(76, 'BRA','JPN');
+    R[77]=koMatch(77, 'AUS','EGY');
+    R[78]=koMatch(78, 'CIV','NOR');
+    R[79]=koMatch(79, 'SUI','ALG');
+    R[80]=koMatch(80, 'COL','GHA');
+    R[81]=koMatch(81, 'MEX','ECU');
+    R[82]=koMatch(82, 'ENG','COD');
+    R[83]=koMatch(83, 'GER','PAR');
+    R[84]=koMatch(84, 'FRA','SWE');
+    R[85]=koMatch(85, 'ESP','AUT');
+    R[86]=koMatch(86, 'BEL','SEN');
+    R[87]=koMatch(87, 'POR','CRO');
+    R[88]=koMatch(88, 'USA','BIH');
+  } else {
+    // Round of 32 (73–88) — algorithmic assignment per official FIFA schedule
+    R[73]=koMatch(73, G2("A"), G2("B"));  // 2A v 2B
+    R[74]=koMatch(74, G1("E"), bestThird(["A","B","C","D","F"]));  // 1E v 3(ABCDF)
+    R[75]=koMatch(75, G1("F"), G2("C"));  // 1F v 2C
+    R[76]=koMatch(76, G1("C"), G2("F"));  // 1C v 2F
+    R[77]=koMatch(77, G1("I"), bestThird(["C","D","F","G","H"]));  // 1I v 3(CDFGH)
+    R[78]=koMatch(78, G2("E"), G2("I"));  // 2E v 2I
+    R[79]=koMatch(79, G1("A"), bestThird(["C","E","F","H","I"]));  // 1A v 3(CEFHI)
+    R[80]=koMatch(80, G1("L"), bestThird(["E","H","I","J","K"]));  // 1L v 3(EHIJK)
+    R[81]=koMatch(81, G1("D"), bestThird(["B","E","F","I","J"]));  // 1D v 3(BEFIJ)
+    R[82]=koMatch(82, G1("G"), bestThird(["A","E","H","I","J"]));  // 1G v 3(AEHIJ)
+    R[83]=koMatch(83, G2("K"), G2("L"));  // 2K v 2L
+    R[84]=koMatch(84, G1("H"), G2("J"));  // 1H v 2J
+    R[85]=koMatch(85, G1("B"), bestThird(["E","F","G","I","J"]));  // 1B v 3(EFGIJ)
+    R[86]=koMatch(86, G1("J"), G2("H"));  // 1J v 2H
+    R[87]=koMatch(87, G1("K"), bestThird(["D","E","I","J","L"]));  // 1K v 3(DEIJL)
+    R[88]=koMatch(88, G2("D"), G2("G"));  // 2D v 2G
+  }
   // Round of 16 (89–96)
   R[89]=koMatch(89, R[74].winner, R[77].winner);
   R[90]=koMatch(90, R[73].winner, R[75].winner);  // W73 v W75
