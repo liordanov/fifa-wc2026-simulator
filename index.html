@@ -272,6 +272,8 @@ let variance = 5;
 
 // Populated dynamically at runtime by fetchLiveResults()
 let REAL_RESULTS = {};
+// Populated dynamically at runtime: knockout match results keyed by "TEAMA|TEAMB"
+let PAIR_RESULTS = {};
 
 document.getElementById('vSlider').addEventListener('input', function(){ variance=+this.value; document.getElementById('vVal').textContent=variance+'%'; });
 
@@ -530,9 +532,20 @@ function bestThird(groupSet) {
 }
 
 function koMatch(num, a, b) {
-  const res = simKO(a, b);
+  const real = PAIR_RESULTS[`${a}|${b}`];
+  let res, played;
+  if (real) {
+    const winner = real.pens
+      ? (real.pens.a > real.pens.b ? a : b)
+      : (real.goalsA > real.goalsB ? a : b);
+    res = { goalsA: real.goalsA, goalsB: real.goalsB, aet: real.aet, pens: real.pens, winner };
+    played = true;
+  } else {
+    res = simKO(a, b);
+    played = false;
+  }
   logGoals(a, res.goalsA); logGoals(b, res.goalsB);
-  return { num, a, b, ...res };
+  return { num, a, b, ...res, played };
 }
 
 // ── Knockout with exact schedule match numbers ────────────────
@@ -661,6 +674,25 @@ const FALLBACK_RESULTS = {
  37:{goalsA:0,goalsB:0},39:{goalsA:4,goalsB:0},40:{goalsA:2,goalsB:2}
 };
 
+// ── Hardcoded knockout (Round of 32) fallback results, as of July 2 2026 ─
+const FALLBACK_PAIR_RESULTS = {};
+function addFallbackPair(a, b, goalsA, goalsB, aet=false, pens=null) {
+  FALLBACK_PAIR_RESULTS[`${a}|${b}`] = { goalsA, goalsB, aet, pens };
+  FALLBACK_PAIR_RESULTS[`${b}|${a}`] = { goalsA: goalsB, goalsB: goalsA, aet, pens: pens ? { a: pens.b, b: pens.a } : null };
+}
+addFallbackPair('RSA','CAN', 0,1);
+addFallbackPair('BRA','JPN', 2,1);
+addFallbackPair('GER','PAR', 1,1, true, { a:3, b:4 });
+addFallbackPair('NED','MAR', 1,1, true, { a:2, b:3 });
+addFallbackPair('CIV','NOR', 1,2);
+addFallbackPair('FRA','SWE', 3,0);
+addFallbackPair('MEX','ECU', 2,0);
+addFallbackPair('ENG','COD', 2,1);
+addFallbackPair('BEL','SEN', 3,2, true);
+addFallbackPair('USA','BIH', 2,0);
+addFallbackPair('ESP','AUT', 3,0);
+addFallbackPair('POR','CRO', 2,1);
+
 // ── Fetch live results: ESPN (date range) → FIFA API → hardcoded ─
 async function fetchLiveResults() {
   const sub = document.getElementById("progSub");
@@ -670,7 +702,10 @@ async function fetchLiveResults() {
 
   const lookup = buildMatchLookup();
 
-  // Helper: parse ESPN events array into our results object
+  // Start from known knockout results; live data will overlay/extend this
+  PAIR_RESULTS = { ...FALLBACK_PAIR_RESULTS };
+
+  // Helper: parse ESPN events array into our group-stage results object (matches 1-72)
   function parseESPN(events) {
     const out = {};
     for (const event of events) {
@@ -689,6 +724,38 @@ async function fetchLiveResults() {
       const sA = parseInt(c1.score), sB = parseInt(c2.score);
       if (isNaN(sA) || isNaN(sB)) continue;
       out[entry.num] = entry.swap ? { goalsA: sB, goalsB: sA } : { goalsA: sA, goalsB: sB };
+    }
+    return out;
+  }
+
+  // Helper: parse ANY completed match (group or knockout) into a team-pair lookup
+  function parsePairResults(events) {
+    const out = {};
+    for (const event of events) {
+      const comp = event.competitions?.[0];
+      if (!comp) continue;
+      const s = comp.status?.type;
+      const done = s?.completed === true || s?.state === 'post'
+                || s?.name === 'STATUS_FINAL' || s?.description === 'Final';
+      if (!done) continue;
+      const [c1, c2] = comp.competitors || [];
+      if (!c1 || !c2) continue;
+      const codeA = resolveCode(c1), codeB = resolveCode(c2);
+      if (!codeA || !codeB) continue;
+      const sA = parseInt(c1.score), sB = parseInt(c2.score);
+      if (isNaN(sA) || isNaN(sB)) continue;
+
+      // Try to detect a penalty shootout score if ESPN provides one
+      let pens = null;
+      const shootA = c1.shootoutScore != null ? parseInt(c1.shootoutScore) : NaN;
+      const shootB = c2.shootoutScore != null ? parseInt(c2.shootoutScore) : NaN;
+      if (!isNaN(shootA) && !isNaN(shootB)) pens = { a: shootA, b: shootB };
+
+      const detailText = ((s?.detail || '') + ' ' + (s?.shortDetail || '') + ' ' + (s?.description || '')).toLowerCase();
+      const aet = !!pens || detailText.includes('aet') || detailText.includes('extra time') || detailText.includes('pen');
+
+      out[`${codeA}|${codeB}`] = { goalsA: sA, goalsB: sB, aet, pens };
+      out[`${codeB}|${codeA}`] = { goalsA: sB, goalsB: sA, aet, pens: pens ? { a: pens.b, b: pens.a } : null };
     }
     return out;
   }
@@ -718,15 +785,20 @@ async function fetchLiveResults() {
   // ── Source 1: ESPN single date-range request ────────────────
   try {
     const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-    const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-${today}&limit=100`;
+    const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-${today}&limit=150`;
     const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
       const events = data.events || data.sports?.[0]?.leagues?.[0]?.events || [];
-      const parsed = parseESPN(events);
-      if (Object.keys(parsed).length > 0) {
-        REAL_RESULTS = parsed;
-        sub.textContent = `✅ Live (ESPN): ${Object.keys(REAL_RESULTS).length} results`;
+      const parsedGroup = parseESPN(events);
+      const parsedPairs = parsePairResults(events);
+      if (Object.keys(parsedPairs).length > 0) {
+        PAIR_RESULTS = { ...PAIR_RESULTS, ...parsedPairs };
+      }
+      if (Object.keys(parsedGroup).length > 0) {
+        REAL_RESULTS = parsedGroup;
+        const koCount = Object.keys(PAIR_RESULTS).length / 2;
+        sub.textContent = `✅ Live (ESPN): ${Object.keys(REAL_RESULTS).length} group + ${koCount} KO results`;
         return;
       }
     }
@@ -742,7 +814,8 @@ async function fetchLiveResults() {
       const parsed = parseFIFA(results);
       if (Object.keys(parsed).length > 0) {
         REAL_RESULTS = parsed;
-        sub.textContent = `✅ Live (FIFA): ${Object.keys(REAL_RESULTS).length} results`;
+        const koCount = Object.keys(PAIR_RESULTS).length / 2;
+        sub.textContent = `✅ Live (FIFA): ${Object.keys(REAL_RESULTS).length} group + ${koCount} KO results`;
         return;
       }
     }
@@ -750,7 +823,8 @@ async function fetchLiveResults() {
 
   // ── Source 3: hardcoded fallback ───────────────────────────
   REAL_RESULTS = { ...FALLBACK_RESULTS };
-  sub.textContent = `⚠️ Using built-in results (${Object.keys(REAL_RESULTS).length} games)`;
+  const koCount = Object.keys(PAIR_RESULTS).length / 2;
+  sub.textContent = `⚠️ Using built-in results (${Object.keys(REAL_RESULTS).length} group + ${koCount} KO games)`;
 }
 
 // ── Pure xG (no noise) — used for upset factor calibration ───
@@ -959,8 +1033,11 @@ function renderGroups(){
 function matchCardHTML(m){
   const wA=m.winner===m.a;
   const meta=m.pens?`Pens ${m.pens.a}–${m.pens.b}`:(m.aet?'AET':'FT');
+  const badge = m.played
+    ? '<span style="color:#4a9">PLAYED</span>'
+    : '<span style="color:#777">SIM</span>';
   return `<div class="match-card">
-    <div class="match-num">MATCH ${m.num}</div>
+    <div class="match-num">MATCH ${m.num} · ${badge}</div>
     <div class="match-team ${wA?'winner':'loser'}"><span>${T[m.a].flag} ${T[m.a].name}</span><span class="match-score">${m.goalsA}</span></div>
     <div class="match-divider"></div>
     <div class="match-team ${!wA?'winner':'loser'}"><span>${T[m.b].flag} ${T[m.b].name}</span><span class="match-score">${m.goalsB}</span></div>
